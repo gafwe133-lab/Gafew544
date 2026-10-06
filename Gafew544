@@ -1,0 +1,741 @@
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
+-- หน้าต่างหลัก Gafew Galaxy GOD Hub
+local Window = Rayfield:CreateWindow({
+   Name = "Gafew👽👾 - GALAXY GOD HUB",
+   Icon = 0,
+   LoadingTitle = "Loading Ultimate Features...",
+   LoadingSubtitle = "by Gafew",
+   Theme = "Amethyst",
+   DisableRayfieldPrompts = false,
+   DisableBuildWarnings = false,
+   ConfigurationSaving = {
+      Enabled = true,
+      FolderName = "GafewHubConfig",
+      FileName = "GalaxyGodSettings"
+   },
+   KeySystem = false
+})
+
+-- ตัวแปรระบบ
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local TeleportService = game:GetService("TeleportService")
+local Lighting = game:GetService("Lighting")
+local Debris = game:GetService("Debris")
+local TweenService = game:GetService("TweenService")
+local LocalPlayer = Players.LocalPlayer
+local Mouse = LocalPlayer:GetMouse()
+
+local DEFAULT_WALKSPEED = 16
+local DEFAULT_JUMPPOWER = 50
+
+local WalkSpeedValue = DEFAULT_WALKSPEED
+local JumpPowerValue = DEFAULT_JUMPPOWER
+local InfiniteJumpEnabled = false
+local NoclipEnabled = false
+local EspEnabled = false
+local FullbrightEnabled = false
+local BagCostumeEnabled = false
+local BlackHoleEnabled = false
+
+local IsSuperman = false
+local TargetFlingPlayer = ""
+local FlingActive = false
+
+-- ===================================================
+-- ระบบย่อย & Anti-AFK & Loops
+-- ===================================================
+
+-- Anti-AFK
+task.spawn(function()
+    local virtualUser = game:GetService("VirtualUser")
+    LocalPlayer.Idled:Connect(function()
+        virtualUser:CaptureController()
+        virtualUser:ClickButton2(Vector2.zero)
+        Rayfield:Notify({Title = "Gafew👽👾", Content = "ป้องกัน AFK ทำงานแล้ว!", Duration = 2})
+    end)
+end)
+
+-- Click TP (Ctrl + คลิกซ้าย)
+Mouse.Button1Down:Connect(function()
+    if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) or UserInputService:IsKeyDown(Enum.KeyCode.RightControl) then
+        if Mouse.Hit and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            LocalPlayer.Character.HumanoidRootPart.CFrame = Mouse.Hit + Vector3.new(0, 3, 0)
+            Rayfield:Notify({Title = "Gafew👽👾", Content = "วาร์ปไปจุดที่คลิก!", Duration = 2})
+        end
+    end
+end)
+
+-- Infinite Jump
+UserInputService.JumpRequest:Connect(function()
+    if InfiniteJumpEnabled then
+        local character = LocalPlayer.Character
+        if character and character:FindFirstChildOfClass("Humanoid") then
+            character:FindFirstChildOfClass("Humanoid"):ChangeState(Enum.HumanoidStateType.Jumping)
+        end
+    end
+end)
+
+-- ฟังก์ชันใส่/ถอด ชุดถุงคลุมตัว
+local function UpdateBagCostumes()
+    for _, plr in pairs(Players:GetPlayers()) do
+        if plr.Character then
+            local char = plr.Character
+            local existingBag = char:FindFirstChild("GafewBagCostume")
+            if BagCostumeEnabled then
+                if not existingBag and char:FindFirstChild("HumanoidRootPart") then
+                    local bag = Instance.new("Part")
+                    bag.Name = "GafewBagCostume"
+                    bag.Size = Vector3.new(3, 5, 3)
+                    bag.Color = Color3.fromRGB(163, 124, 82)
+                    bag.Material = Enum.Material.Fabric
+                    bag.CanCollide = false
+                    
+                    local weld = Instance.new("Weld", bag)
+                    weld.Part0 = char.HumanoidRootPart
+                    weld.Part1 = bag
+                    weld.C0 = CFrame.new(0, 0, 0)
+                    bag.Parent = char
+                end
+            else
+                if existingBag then existingBag:Destroy() end
+            end
+        end
+    end
+end
+
+-- Main Heartbeat Loop
+RunService.Stepped:Connect(function()
+    local char = LocalPlayer.Character
+    if not char then return end
+    local myHRP = char:FindFirstChild("HumanoidRootPart")
+
+    if (NoclipEnabled or FlingActive) then
+        for _, part in pairs(char:GetDescendants()) do
+            if part:IsA("BasePart") then part.CanCollide = false end
+        end
+    end
+
+    if FullbrightEnabled then
+        Lighting.Brightness = 2
+        Lighting.ClockTime = 14
+        Lighting.FogEnd = 100000
+        Lighting.GlobalShadows = false
+    end
+
+    if BagCostumeEnabled then UpdateBagCostumes() end
+
+    -- ฟังก์ชันหลุมดำดูดคนทั้งเซิร์ฟ (Cosmic Black Hole)
+    if BlackHoleEnabled and myHRP then
+        local blackHolePos = myHRP.CFrame * CFrame.new(0, 15, 0)
+        for _, plr in pairs(Players:GetPlayers()) do
+            if plr ~= LocalPlayer and plr.Character then
+                local tHRP = plr.Character:FindFirstChild("HumanoidRootPart")
+                if tHRP then
+                    tHRP.CFrame = blackHolePos * CFrame.Angles(0, math.rad(tick() * 100 % 360), 0) * CFrame.new(0, 0, math.random(2, 6))
+                end
+            end
+        end
+    end
+end)
+
+-- ESP มองทะลุ
+local function UpdateESP()
+    for _, plr in pairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer and plr.Character then
+            local highlight = plr.Character:FindFirstChild("GafewESP")
+            if EspEnabled then
+                if not highlight then
+                    highlight = Instance.new("Highlight")
+                    highlight.Name = "GafewESP"
+                    highlight.FillColor = Color3.fromRGB(180, 70, 255)
+                    highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+                    highlight.FillTransparency = 0.4
+                    highlight.OutlineTransparency = 0
+                    highlight.Parent = plr.Character
+                end
+            else
+                if highlight then highlight:Destroy() end
+            end
+        end
+    end
+end
+
+-- ===================================================
+-- ฟังก์ชันสุดปั่นแปลกใหม่ (Unreal Funny Features)
+-- ===================================================
+
+-- 1. ฟ้าผ่าเปลี่ยนร่างเป็นกล้วยยักษ์ (Banana Mutation)
+local function TurnIntoBanana()
+    local char = LocalPlayer.Character
+    if not char then return end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+
+    local bolt = Instance.new("Part")
+    bolt.Size = Vector3.new(2, 100, 2)
+    bolt.Color = Color3.fromRGB(255, 255, 100)
+    bolt.Material = Enum.Material.Neon
+    bolt.CFrame = hrp.CFrame * CFrame.new(0, 50, 0)
+    bolt.Anchored = true
+    bolt.CanCollide = false
+    bolt.Parent = workspace
+
+    local sound = Instance.new("Sound")
+    sound.SoundId = "rbxassetid://138090596"
+    sound.Volume = 3
+    sound.Parent = hrp
+    sound:Play()
+
+    Debris:AddItem(bolt, 0.3)
+
+    for _, item in pairs(char:GetChildren()) do
+        if item:IsA("Accessory") or item:IsA("Shirt") or item:IsA("Pants") then
+            item:Destroy()
+        end
+    end
+
+    local banana = Instance.new("Part")
+    banana.Name = "BananaBody"
+    banana.Size = Vector3.new(4, 9, 4)
+    banana.Color = Color3.fromRGB(255, 225, 0)
+    banana.Material = Enum.Material.SmoothPlastic
+    banana.Shape = Enum.PartType.Cylinder
+    banana.CanCollide = false
+
+    local weld = Instance.new("Weld", banana)
+    weld.Part0 = hrp
+    weld.Part1 = banana
+    weld.C0 = CFrame.Angles(0, 0, math.rad(90))
+    banana.Parent = char
+
+    local aura = Instance.new("Highlight")
+    aura.FillColor = Color3.fromRGB(255, 255, 0)
+    aura.OutlineColor = Color3.fromRGB(255, 150, 0)
+    aura.Parent = char
+
+    Rayfield:Notify({Title = "Gafew👽👾", Content = "ฟ้าผ่ากลายร่างเป็นกล้วยยักษ์แล้ว!", Duration = 3})
+end
+
+-- 2. คลื่นทำลายล้างรอบตัว (Annihilation Wave)
+local function ReleaseAnnihilationWave()
+    local char = LocalPlayer.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+
+    local wave = Instance.new("Part")
+    wave.Size = Vector3.new(1, 1, 1)
+    wave.Color = Color3.fromRGB(180, 70, 255)
+    wave.Material = Enum.Material.Neon
+    wave.Shape = Enum.PartType.Ball
+    wave.Anchored = true
+    wave.CanCollide = false
+    wave.CFrame = hrp.CFrame
+    wave.Parent = workspace
+
+    TweenService:Create(wave, TweenInfo.new(0.6, Enum.EasingStyle.Expo, Enum.EasingDirection.Out), {
+        Size = Vector3.new(60, 60, 60),
+        Transparency = 1
+    }):Play()
+    Debris:AddItem(wave, 0.6)
+
+    for _, plr in pairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer and plr.Character then
+            local tHRP = plr.Character:FindFirstChild("HumanoidRootPart")
+            if tHRP and (tHRP.Position - hrp.Position).Magnitude <= 35 then
+                local bVel = Instance.new("BodyVelocity")
+                bVel.MaxForce = Vector3.new(1e6, 1e6, 1e6)
+                bVel.Velocity = (tHRP.Position - hrp.Position).Unit * 300 + Vector3.new(0, 150, 0)
+                bVel.Parent = tHRP
+                Debris:AddItem(bVel, 0.4)
+            end
+        end
+    end
+    Rayfield:Notify({Title = "Gafew👽👾", Content = "ปล่อยคลื่นทำลายล้างรอบทิศ!", Duration = 2})
+end
+
+-- 3. บังคับเต้นทั้งเซิร์ฟ (Server Dance Party)
+local function MakeEveryoneDance()
+    for _, plr in pairs(Players:GetPlayers()) do
+        if plr.Character then
+            local hum = plr.Character:FindFirstChildOfClass("Humanoid")
+            if hum then
+                local anim = Instance.new("Animation")
+                anim.AnimationId = "rbxassetid://182436842"
+                local track = hum:LoadAnimation(anim)
+                track:Play()
+            end
+        end
+    end
+    Rayfield:Notify({Title = "Gafew👽👾", Content = "จัดปาร์ตี้เต้นทั้งเซิร์ฟเวอร์!", Duration = 3})
+end
+
+-- ===================================================
+-- ฟังก์ชัน Superman, Safe Fling & Katana
+-- ===================================================
+
+local function RemoveSuperman()
+    IsSuperman = false
+    local char = LocalPlayer.Character
+    if char then
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if hum then hum.WalkSpeed = WalkSpeedValue end
+        local aura = char:FindFirstChild("SupermanAura")
+        if aura then aura:Destroy() end
+    end
+    Rayfield:Notify({Title = "Gafew👽👾", Content = "กลับเป็นร่างปกติแล้ว!", Duration = 2})
+end
+
+local function ApplySupermanSuit(char)
+    IsSuperman = true
+    local hum = char:WaitForChild("Humanoid")
+    hum.WalkSpeed = WalkSpeedValue > 16 and WalkSpeedValue or 150
+
+    for _, v in pairs(char:GetChildren()) do
+        if v:IsA("Shirt") or v:IsA("Pants") then v:Destroy() end
+    end
+
+    local shirt = Instance.new("Shirt", char)
+    shirt.ShirtTemplate = "http://www.roblox.com/asset/?id=10931215"
+    local pants = Instance.new("Pants", char)
+    pants.PantsTemplate = "http://www.roblox.com/asset/?id=10931221"
+
+    local aura = Instance.new("Highlight")
+    aura.Name = "SupermanAura"
+    aura.FillColor = Color3.fromRGB(255, 215, 0)
+    aura.OutlineColor = Color3.fromRGB(147, 112, 219)
+    aura.FillTransparency = 0.4
+    aura.Parent = char
+end
+
+local function StartFunnySequence()
+    local char = LocalPlayer.Character
+    if not char then return end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not hrp or not hum then return end
+
+    Rayfield:Notify({Title = "Gafew👽👾", Content = "เริ่มฉากสุดปั่น...", Duration = 3})
+
+    for _, item in pairs(char:GetChildren()) do
+        if item:IsA("Shirt") or item:IsA("Pants") or item:IsA("ShirtGraphic") or item:IsA("Accessory") then
+            item:Destroy()
+        end
+    end
+
+    task.wait(0.8)
+
+    local plane = Instance.new("Part")
+    plane.Size = Vector3.new(15, 8, 35)
+    plane.Color = Color3.fromRGB(120, 120, 120)
+    plane.Material = Enum.Material.Metal
+    plane.CFrame = hrp.CFrame * CFrame.new(0, 80, -20) * CFrame.Angles(math.rad(-45), 0, 0)
+    plane.CanCollide = false
+    plane.Parent = workspace
+
+    local sound = Instance.new("Sound")
+    sound.SoundId = "rbxassetid://138090596"
+    sound.Volume = 2
+    sound.Parent = plane
+    sound:Play()
+
+    local planeTween = TweenService:Create(plane, TweenInfo.new(0.7, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+        CFrame = hrp.CFrame
+    })
+    planeTween:Play()
+    planeTween.Completed:Wait()
+
+    local exp = Instance.new("Explosion")
+    exp.Position = hrp.Position
+    exp.BlastRadius = 25
+    exp.BlastPressure = 500000
+    exp.Parent = workspace
+
+    plane:Destroy()
+    hum.Health = 0
+
+    Rayfield:Notify({Title = "Gafew👽👾", Content = "เกิดใหม่เป็น SUPERMAN!", Duration = 4})
+
+    local connection
+    connection = LocalPlayer.CharacterAdded:Connect(function(newChar)
+        connection:Disconnect()
+        task.wait(1)
+        ApplySupermanSuit(newChar)
+    end)
+end
+
+local function SafeFlingTarget(targetName)
+    local targetPlr = Players:FindFirstChild(targetName)
+    if not targetPlr or not targetPlr.Character then return end
+
+    local myChar = LocalPlayer.Character
+    local targetChar = targetPlr.Character
+    if not myChar or not targetChar then return end
+
+    local myHRP = myChar:FindFirstChild("HumanoidRootPart")
+    local myHum = myChar:FindFirstChildOfClass("Humanoid")
+    local targetHRP = targetChar:FindFirstChild("HumanoidRootPart")
+    if not myHRP or not targetHRP or not myHum then return end
+
+    FlingActive = true
+    local originalCFrame = myHRP.CFrame
+    myHum.PlatformStand = true
+
+    local bav = Instance.new("BodyAngularVelocity")
+    bav.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+    bav.AngularVelocity = Vector3.new(0, 999999, 0)
+    bav.Parent = myHRP
+
+    local startTime = tick()
+    local flingLoop
+    flingLoop = RunService.Heartbeat:Connect(function()
+        if tick() - startTime > 2 or not FlingActive or not targetHRP or not targetHRP.Parent then
+            flingLoop:Disconnect()
+            bav:Destroy()
+            myHRP.Velocity = Vector3.zero
+            myHRP.RotVelocity = Vector3.zero
+            myHRP.CFrame = originalCFrame
+            myHum.PlatformStand = false
+            FlingActive = false
+            Rayfield:Notify({Title = "Gafew👽👾", Content = "วาร์ปกลับจุดเดิมเรียบร้อย!", Duration = 2})
+            return
+        end
+        myHRP.CFrame = targetHRP.CFrame * CFrame.new(0, 0, 0)
+        myHRP.Velocity = Vector3.new(9999, 9999, 9999)
+    end)
+end
+
+local function GiveCyberKatana()
+    local backpack = LocalPlayer:FindFirstChildOfClass("Backpack")
+    if not backpack then return end
+
+    local tool = Instance.new("Tool")
+    tool.Name = "Cyber Katana"
+    tool.Grip = CFrame.new(0, -1.2, 0) * CFrame.Angles(math.rad(-90), 0, 0)
+
+    local handle = Instance.new("Part")
+    handle.Name = "Handle"
+    handle.Size = Vector3.new(0.3, 1.5, 0.3)
+    handle.Color = Color3.fromRGB(20, 20, 20)
+    handle.Parent = tool
+
+    local blade = Instance.new("Part")
+    blade.Name = "Blade"
+    blade.Size = Vector3.new(0.1, 4.5, 0.5)
+    blade.Color = Color3.fromRGB(180, 70, 255)
+    blade.Material = Enum.Material.Neon
+    blade.CanCollide = false
+
+    local mesh = Instance.new("SpecialMesh", blade)
+    mesh.MeshType = Enum.MeshType.Wedge
+    mesh.Scale = Vector3.new(0.2, 4.5, 0.8)
+
+    local weld = Instance.new("Weld", handle)
+    weld.Part0 = handle
+    weld.Part1 = blade
+    weld.C0 = CFrame.new(0, 2.5, 0) * CFrame.Angles(0, math.rad(180), 0)
+    blade.Parent = tool
+
+    local attacking = false
+    tool.Activated:Connect(function()
+        if attacking then return end
+        attacking = true
+        local myChar = tool.Parent
+        local myHRP = myChar and myChar:FindFirstChild("HumanoidRootPart")
+
+        if myHRP then
+            local wave = Instance.new("Part")
+            wave.Size = Vector3.new(1, 1, 1)
+            wave.Color = Color3.fromRGB(180, 70, 255)
+            wave.Material = Enum.Material.Neon
+            wave.Shape = Enum.PartType.Ball
+            wave.Anchored = true
+            wave.CanCollide = false
+            wave.CFrame = myHRP.CFrame * CFrame.new(0, 0, -3)
+            wave.Parent = workspace
+
+            TweenService:Create(wave, TweenInfo.new(0.25), {
+                Size = Vector3.new(12, 12, 12),
+                Transparency = 1
+            }):Play()
+            Debris:AddItem(wave, 0.25)
+
+            for _, target in pairs(Players:GetPlayers()) do
+                if target ~= LocalPlayer and target.Character then
+                    local tHRP = target.Character:FindFirstChild("HumanoidRootPart")
+                    if tHRP and (tHRP.Position - myHRP.Position).Magnitude <= 12 then
+                        local bVel = Instance.new("BodyVelocity")
+                        bVel.MaxForce = Vector3.new(1e6, 1e6, 1e6)
+                        bVel.Velocity = (myHRP.CFrame.LookVector * 200) + Vector3.new(0, 150, 0)
+                        bVel.Parent = tHRP
+                        Debris:AddItem(bVel, 0.3)
+                    end
+                end
+            end
+        end
+        task.wait(0.4)
+        attacking = false
+    end)
+    tool.Parent = backpack
+    Rayfield:Notify({Title = "Gafew👽👾", Content = "ได้รับ Cyber Katana แล้ว!", Duration = 2})
+end
+
+-- ฟังก์ชันรีเซ็ตค่าทั้งหมดกลับเป็นเริ่มต้น
+local function ResetAllSettings()
+    WalkSpeedValue = DEFAULT_WALKSPEED
+    JumpPowerValue = DEFAULT_JUMPPOWER
+    InfiniteJumpEnabled = false
+    NoclipEnabled = false
+    EspEnabled = false
+    FullbrightEnabled = false
+    BagCostumeEnabled = false
+    BlackHoleEnabled = false
+
+    local char = LocalPlayer.Character
+    if char then
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if hum then
+            hum.WalkSpeed = DEFAULT_WALKSPEED
+            hum.JumpPower = DEFAULT_JUMPPOWER
+        end
+        local banana = char:FindFirstChild("BananaBody")
+        if banana then banana:Destroy() end
+    end
+
+    Lighting.Brightness = 1
+    Lighting.GlobalShadows = true
+
+    UpdateESP()
+    UpdateBagCostumes()
+    RemoveSuperman()
+
+    Rayfield:Notify({Title = "Gafew👽👾", Content = "รีเซ็ตตั้งค่าทั้งหมดกลับเป็นเริ่มต้นแล้ว!", Duration = 3})
+end
+
+local function GetPlayerNames()
+    local list = {}
+    for _, p in pairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer then table.insert(list, p.Name) end
+    end
+    return list
+end
+
+-- ===================================================
+-- UI Tabs & Controls
+-- ===================================================
+
+local UnrealTab = Window:CreateTab("🌌 GOD Features (สุดปั่น)", 4483362458)
+local UniversalTab = Window:CreateTab("Universal 🌐", 4483362458)
+local FunnyTab = Window:CreateTab("Superman & Funny ✈️", 4483362458)
+local MainTab = Window:CreateTab("Main & Weapons ⚔️", 4483362458)
+local MovementTab = Window:CreateTab("Movement 🏃‍♂️", 4483362458)
+
+-- --- Unreal GOD Tab ---
+UnrealTab:CreateSection("ระบบก่อกวนระดับจักรวาล (Cosmic Features)")
+
+UnrealTab:CreateToggle({
+   Name = "🌌 Cosmic Black Hole (หลุมดำดูดคนทั้งแมพ)",
+   CurrentValue = false,
+   Callback = function(Value) BlackHoleEnabled = Value end,
+})
+
+UnrealTab:CreateButton({
+   Name = "💥 Annihilation Wave (ปล่อยคลื่นระเบิดอัดคนปลิว)",
+   Callback = function() ReleaseAnnihilationWave() end,
+})
+
+UnrealTab:CreateButton({
+   Name = "🍌 Banana Mutation (ฟ้าผ่าแปลงร่างเป็นกล้วยยักษ์)",
+   Callback = function() TurnIntoBanana() end,
+})
+
+UnrealTab:CreateButton({
+   Name = "💃 Server Dance Party (สั่งคนทั้งเซิร์ฟเต้นพร้อมกัน)",
+   Callback = function() MakeEveryoneDance() end,
+})
+
+-- --- Universal Tab ---
+UniversalTab:CreateSection("ระบบเซิร์ฟเวอร์ & ภาพการมองเห็น")
+
+UniversalTab:CreateButton({
+   Name = "🔄 Rejoin Server (เข้าเซิร์ฟเดิมใหม่)",
+   Callback = function()
+       TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, LocalPlayer)
+   end,
+})
+
+UniversalTab:CreateButton({
+   Name = "🔀 Server Hop (สุ่มย้ายเซิร์ฟเวอร์ใหม่)",
+   Callback = function()
+       TeleportService:Teleport(game.PlaceId, LocalPlayer)
+   end,
+})
+
+UniversalTab:CreateToggle({
+   Name = "☀️ Fullbright (แมพสว่างเต็มที่ / ลบหมอก)",
+   CurrentValue = false,
+   Callback = function(Value)
+       FullbrightEnabled = Value
+       if not Value then
+           Lighting.Brightness = 1
+           Lighting.GlobalShadows = true
+       end
+   end,
+})
+
+UniversalTab:CreateToggle({
+   Name = "👁 Universal ESP (มองทะลุผู้เล่น)",
+   CurrentValue = false,
+   Callback = function(Value)
+       EspEnabled = Value
+       UpdateESP()
+   end,
+})
+
+UniversalTab:CreateButton({
+   Name = "💻 รัน Infinite Yield (กล่องคำสั่งเสริม)",
+   Callback = function()
+       loadstring(game:HttpGet('https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source'))()
+   end,
+})
+
+-- --- Funny Tab ---
+FunnyTab:CreateSection("ฟังก์ชันชุดถุงคลุมสุดฮา")
+
+FunnyTab:CreateToggle({
+   Name = "📦 เปลี่ยนเป็นชุดถุงคลุมให้ทุกคน (Bag Costume All)",
+   CurrentValue = false,
+   Callback = function(Value)
+       BagCostumeEnabled = Value
+       UpdateBagCostumes()
+   end,
+})
+
+FunnyTab:CreateSection("ฉาก Superman (สวมชุด + วิ่งเร็ว)")
+
+FunnyTab:CreateButton({
+   Name = "🚀 เปิดใช้งาน (แก้ผ้า -> เครื่องบินชน -> เกิดเป็น Superman)",
+   Callback = function() StartFunnySequence() end,
+})
+
+FunnyTab:CreateButton({
+   Name = "🔄 สลับกลับเป็นร่างปกติ",
+   Callback = function() RemoveSuperman() end,
+})
+
+-- --- Main Tab ---
+MainTab:CreateSection("Target Safe Fling")
+
+local FlingDropdown = MainTab:CreateDropdown({
+   Name = "เลือกเป้าหมายที่ต้องการเตะให้ปลิว",
+   Options = GetPlayerNames(),
+   CurrentOption = "",
+   Callback = function(Option) TargetFlingPlayer = Option[1] end,
+})
+
+MainTab:CreateButton({
+   Name = "🔄 รีเฟรชรายชื่อ",
+   Callback = function() FlingDropdown:Refresh(GetPlayerNames()) end,
+})
+
+MainTab:CreateButton({
+   Name = "⚡ เตะเป้าหมายให้ปลิวกระเด็น",
+   Callback = function()
+       if TargetFlingPlayer ~= "" then SafeFlingTarget(TargetFlingPlayer) end
+   end,
+})
+
+MainTab:CreateSection("Weapons System")
+
+MainTab:CreateButton({
+   Name = "⚔️ เสกดาบแคตานะเลเซอร์ (Cyber Katana)",
+   Callback = function() GiveCyberKatana() end,
+})
+
+-- --- Movement Tab ---
+MovementTab:CreateSection("🔄 รีเซ็ตการตั้งค่า (Reset To Default)")
+
+MovementTab:CreateButton({
+   Name = "🔄 รีเซ็ตค่าทั้งหมดกลับเป็นเริ่มต้น (Reset All Settings)",
+   Callback = function()
+       ResetAllSettings()
+   end,
+})
+
+MovementTab:CreateSection("ระบบปรับความเร็ว & การกระโดด (พิมพ์ป้อนเลขได้)")
+
+MovementTab:CreateInput({
+   Name = "🏃‍♂️ WalkSpeed (ความเร็ววิ่ง - พิมพ์ป้อนตัวเลขได้)",
+   PlaceholderText = "ใส่ค่าความเร็ว (เช่น 16, 100, 250)",
+   RemoveTextAfterFocusLost = false,
+   Callback = function(Text)
+       local num = tonumber(Text)
+       if num then
+           WalkSpeedValue = num
+           if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+               LocalPlayer.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = num
+           end
+           Rayfield:Notify({Title = "Gafew👽👾", Content = "ตั้งค่า WalkSpeed เป็น: " .. tostring(num), Duration = 2})
+       end
+   end,
+})
+
+MovementTab:CreateSlider({
+   Name = "🏃‍♂️ WalkSpeed (แถบเลื่อนความเร็ว)",
+   Range = {16, 500},
+   Increment = 1,
+   CurrentValue = 16,
+   Callback = function(Value)
+       WalkSpeedValue = Value
+       if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+           LocalPlayer.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = Value
+       end
+   end,
+})
+
+MovementTab:CreateInput({
+   Name = "🦘 JumpPower (ความแรงกระโดด - พิมพ์ป้อนตัวเลขได้)",
+   PlaceholderText = "ใส่ค่าแรงกระโดด (เช่น 50, 150, 300)",
+   RemoveTextAfterFocusLost = false,
+   Callback = function(Text)
+       local num = tonumber(Text)
+       if num then
+           JumpPowerValue = num
+           if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+               LocalPlayer.Character:FindFirstChildOfClass("Humanoid").JumpPower = num
+           end
+           Rayfield:Notify({Title = "Gafew👽👾", Content = "ตั้งค่า JumpPower เป็น: " .. tostring(num), Duration = 2})
+       end
+   end,
+})
+
+MovementTab:CreateSlider({
+   Name = "🦘 JumpPower (แถบเลื่อนความแรงกระโดด)",
+   Range = {50, 500},
+   Increment = 5,
+   CurrentValue = 50,
+   Callback = function(Value)
+       JumpPowerValue = Value
+       if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+           LocalPlayer.Character:FindFirstChildOfClass("Humanoid").JumpPower = Value
+       end
+   end,
+})
+
+MovementTab:CreateSection("ระบบเคลื่อนที่เสริม")
+
+MovementTab:CreateToggle({
+   Name = "Infinite Jump (กระโดดไม่จำกัดบนอากาศ)",
+   CurrentValue = false,
+   Callback = function(Value) InfiniteJumpEnabled = Value end,
+})
+
+MovementTab:CreateToggle({
+   Name = "Noclip (เดินทะลุกำแพง/สิ่งกีดขวาง)",
+   CurrentValue = false,
+   Callback = function(Value) NoclipEnabled = Value end,
+})
+
+Rayfield:Notify({Title = "Gafew Galaxy GOD Hub 🌌", Content = "โหลดสคริปต์สำเร็จเรียบร้อย!", Duration = 5})
